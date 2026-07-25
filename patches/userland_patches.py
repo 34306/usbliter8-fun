@@ -16,9 +16,12 @@
 
 import sys, struct
 
-NOP     = 0xD503201F
-MOVX0_0 = 0xD2800000   # mov x0, #0
-RET     = 0xD65F03C0   # ret
+NOP      = 0xD503201F
+MOVX0_0  = 0xD2800000   # mov x0, #0
+MOVW0_1  = 0x52800020   # mov w0, #1
+RET      = 0xD65F03C0   # ret
+ADRP_X0  = 0x90000620   # adrp x0, ...      (page of CFString "Activated")
+ADD_X0_8 = 0x91002000   # add  x0, x0, #8
 
 # name -> list of (file_offset, u32_value, comment)
 PATCHES = {
@@ -33,17 +36,23 @@ PATCHES = {
     "coreauthd": [
         (0x95C0, NOP, "NOP BL startController"),
     ],
-    # NOTE: mobileactivationd activation-state bypass REMOVED.
-    # We now inject a REAL activation record instead of faking "Activated":
-    #   activation_record.plist -> /var/mobile/Library/mad/activation_records/activation_record.plist
-    #   data_ark.plist          -> /var/mobile/Library/mad/data_ark.plist
-    #   IC-Info.sidv            -> /var/mobile/Media/iTunes/IC-Info.sidv
-    # Keep mobileactivationd STOCK so it reads the real record.
+    # mobileactivationd: offline hacktivation.
+    "mobileactivationd": [
+        # -[DeviceType should_hactivate] -> 1  (the `ret` right after is kept)
+        # logs: "Hactivation is enabled, short circuiting activation state to Activated"
+        (0x2EBB14, MOVW0_1,  "mov w0,#1  (should_hactivate -> YES)"),
+        # getActivationStateWithCompletionBlock -> CFString "Activated"
+        (0x327CB0, NOP,      "NOP"),
+        (0x327D10, ADRP_X0,  "adrp x0, <page of \"Activated\">"),
+        (0x327D14, ADD_X0_8, "add  x0, x0, #8"),
+        (0x327D18, NOP,      "NOP"),
+    ],
 }
 
 def main():
     if len(sys.argv) != 3 or sys.argv[1] not in PATCHES:
-        print(__doc__); sys.exit(1)
+        print(f"usage: {sys.argv[0]} <{'|'.join(PATCHES)}> <binary>")
+        sys.exit(1)
     name, path = sys.argv[1], sys.argv[2]
     d = bytearray(open(path, "rb").read())
     for off, val, cmt in PATCHES[name]:
