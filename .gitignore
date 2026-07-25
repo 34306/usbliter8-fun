@@ -1,0 +1,42 @@
+# ===== Firmware / IPSW (tải từ Apple, không commit) =====
+*.ipsw
+**/iPhone*_Restore/
+**/*_Restore/
+
+# ===== Build artifacts (sinh ra bởi get_boot.py / make_cfw.py) =====
+**/Ramdisk/
+**/Ramdisk_*/
+**/CFW/
+**/CFW_RD/
+**/blobs/
+*.raw
+*.im4p
+*.im4m
+*.img4
+kcache.raw
+DeviceTree*.raw
+
+# ===== Blob device-specific (dump apticket của MÁY BẠN — xem BUILD.md) =====
+t8030_apticket.der
+*.der
+*.der.*
+
+# ===== Backups / logs / tmp =====
+*.bak
+*.stale_*
+*.wdtbak
+*.author.bak
+*.orig
+*.log
+.irecovery
+
+# ===== Binary build được từ source trong repo (xem BUILD.md) =====
+work-27.0b2/net/netup
+work-27.0b2/vnc/tvncd
+# trollvncserver: binary GPL của bên thứ 3 — KHÔNG commit, fetch theo vnc/GET_TROLLVNC.md
+work-27.0b2/vnc/trollvncserver
+
+# ===== macOS / Python =====
+.DS_Store
+__pycache__/
+*.pyc
