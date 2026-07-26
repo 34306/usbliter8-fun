@@ -13,6 +13,9 @@
 # then deploy to the device System volume (live-fs, snapshot must be renamed) and sync.
 #
 # ⚠️ Offsets are build-specific (24A5370h). Re-verify for other builds in IDA.
+#
+# NOTE: skipping Setup (the ScreenTimeAgent deadlock) is NOT a byte patch — it is a
+# launchd override. See ./disable_screentime.py.
 
 import sys, struct
 

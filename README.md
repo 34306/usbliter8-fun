@@ -52,6 +52,11 @@ I added a few fixes to it to make it works:
 | `ctkd` | `0x1b38/1b3c` | `mov x0,#0; ret` | Anti SEP crash |
 | `mobileactivationd` `should_hactivate` | `0x2ebb14` | `20 00 80 52` (`mov w0,#1`) | Hacktivation |
 | `mobileactivationd` `getActivationState` | `0x327cb0/d10/d14/d18` | `NOP/ADRP/ADD/NOP` → "Activated" | Belt-and-suspenders |
+| launchd `disabled.plist` | — | 5 labels → `true` | Skip Setup (ScreenTimeAgent deadlock) |
+
+The userland byte patches are scripted in [`patches/userland_patches.py`](patches/userland_patches.py) (`coreauthd`, `ctkd`, `mobileactivationd`). The launchd override is a plist edit, not a byte patch — see [`patches/disable_screentime.py`](patches/disable_screentime.py).
+
+> Offsets are build-specific to **24A5370h / iPhone12,3**. Re-verify them in IDA for any other build.
 
 ## Tutorial
 
@@ -107,7 +112,32 @@ The SSHRD log will print on screen, that means SSHRD succeeded.
 
 That's the boot up. You can use SSH over dropbear and `iproxy` (default password `alpine`) to install Sileo with the bootstrap. Or you can do it over SSHRD.
 
-### 4. Internet + bootstrap
+### 4. Get past Setup
+
+On the first normal boot the device lands in Setup and stays there. Two separate things are blocking it.
+
+**a) Activation.**
+
+```shell
+./patches/userland_patches.py mobileactivationd mobileactivationd
+./patches/userland_patches.py coreauthd coreauthd
+./patches/userland_patches.py ctkd ctkd
+# re-sign each one, keeping its original entitlements (keep a .orig backup first):
+ldid -e mobileactivationd.orig > ents.plist
+ldid -S ents.plist -Cadhoc mobileactivationd
+```
+
+**b) ScreenTime deadlock.** Setup still hangs on the loading spinner.
+
+`ScreenTimeAgent` is an on-demand job (MachServices, has `.setup`). The fix is to make launchd refuse the launch, so Setup's XPC fails fast instead of hanging:
+
+```shell
+scp root@10.7.0.2:/var/db/com.apple.xpc.launchd/disabled.plist .
+./patches/disable_screentime.py disabled.plist
+scp disabled.plist root@10.7.0.2:/var/db/com.apple.xpc.launchd/disabled.plist
+```
+
+### 5. Internet + bootstrap
 
 Wifi and baseband are all broken, so if you need internet to install things:
 
